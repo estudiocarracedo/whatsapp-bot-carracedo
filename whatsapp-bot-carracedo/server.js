@@ -22,11 +22,12 @@ const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
 const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || 'carracedo123';
 const DB_PATH = path.join(process.cwd(), 'data', 'db.json');
+const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
 app.use(morgan('tiny'));
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static('public'));
 
 async function readDb() {
@@ -52,17 +53,12 @@ function normalizePhone(phone = '') {
 
 function normalizePhoneForMeta(phone = '') {
   let clean = normalizePhone(phone);
-
-  if (clean.startsWith('54911')) {
-    clean = '54' + clean.slice(3);
-  }
-
+  if (clean.startsWith('54911')) clean = '54' + clean.slice(3);
   return clean;
 }
 
 function classify(text) {
   const t = (text || '').toLowerCase();
-
   const anmat = /anmat|medical|m[eé]dic|implante|quir[uú]rg|salud|registro/.test(t);
   const importExport = /import|export|aduana|despacho|ncm|sim|sira|licencia|proveedor|china|suiza|eeuu|usa|europa|brasil|uruguay|panam[aá]/.test(t);
   const human = /operador|persona|humano|llamar|asesor|hablar con/.test(t);
@@ -75,35 +71,29 @@ function classify(text) {
 }
 
 function nextBotReply(text, convo) {
-  if (!convo.step) {
-    convo.step = 'ASK_NAME_COMPANY';
-  }
+  if (!convo.step) convo.step = 'ASK_NAME_COMPANY';
 
   if (convo.step === 'ASK_NAME_COMPANY') {
     convo.nameCompany = text;
     convo.step = 'ASK_OPERATION';
-
     return 'Perfecto, gracias. ¿Qué necesitás importar o exportar, desde qué país y en qué estado está la operación?';
   }
 
   if (convo.step === 'ASK_OPERATION') {
     convo.need = text;
     convo.step = 'ASK_SUPPLIER';
-
     return 'Gracias. ¿Ya tenés proveedor definido y factura/proforma, o todavía estás evaluando la operación?';
   }
 
   if (convo.step === 'ASK_SUPPLIER') {
     convo.hasSupplier = text;
     convo.step = 'ASK_ANMAT';
-
     return 'Entendido. ¿La mercadería requiere intervención de ANMAT, registro, certificado especial o algún organismo extraaduanero?';
   }
 
   if (convo.step === 'ASK_ANMAT') {
     convo.requiresAnmat = text;
     convo.step = 'DONE';
-
     return 'Perfecto. Ya recibimos tu consulta ✅ Un operador especializado de Estudio Carracedo revisará la información y continuará la atención a la brevedad.';
   }
 
@@ -117,7 +107,6 @@ async function sendWhatsAppText(to, text) {
   }
 
   const cleanTo = normalizePhoneForMeta(to);
-
   console.log('Enviando WhatsApp a:', cleanTo);
 
   await axios.post(
@@ -138,6 +127,118 @@ async function sendWhatsAppText(to, text) {
       }
     }
   );
+}
+
+function getExtensionFromMime(mime = '') {
+  if (mime.includes('pdf')) return 'pdf';
+  if (mime.includes('jpeg')) return 'jpg';
+  if (mime.includes('jpg')) return 'jpg';
+  if (mime.includes('png')) return 'png';
+  if (mime.includes('webp')) return 'webp';
+  if (mime.includes('mp4')) return 'mp4';
+  if (mime.includes('mpeg')) return 'mp3';
+  if (mime.includes('ogg')) return 'ogg';
+  if (mime.includes('plain')) return 'txt';
+  if (mime.includes('word')) return 'docx';
+  if (mime.includes('excel') || mime.includes('spreadsheet')) return 'xlsx';
+  return 'bin';
+}
+
+async function downloadWhatsAppMedia(mediaId, phone, type, originalFilename = '') {
+  if (!WHATSAPP_TOKEN) throw new Error('Falta WHATSAPP_TOKEN');
+
+  const mediaInfoResponse = await axios.get(
+    `https://graph.facebook.com/v20.0/${mediaId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${WHATSAPP_TOKEN}`
+      }
+    }
+  );
+
+  const mediaUrl = mediaInfoResponse.data.url;
+  const mimeType = mediaInfoResponse.data.mime_type || '';
+  const ext = originalFilename?.includes('.')
+    ? originalFilename.split('.').pop()
+    : getExtensionFromMime(mimeType);
+
+  await fs.mkdir(UPLOAD_DIR, { recursive: true });
+
+  const safePhone = normalizePhone(phone);
+  const filename = `${Date.now()}-${safePhone}-${type}.${ext}`;
+  const filePath = path.join(UPLOAD_DIR, filename);
+
+  const fileResponse = await axios.get(mediaUrl, {
+    responseType: 'arraybuffer',
+    headers: {
+      Authorization: `Bearer ${WHATSAPP_TOKEN}`
+    }
+  });
+
+  await fs.writeFile(filePath, fileResponse.data);
+
+  return {
+    type,
+    filename: originalFilename || filename,
+    savedFilename: filename,
+    mimeType,
+    url: `/uploads/${filename}`
+  };
+}
+
+function extractMessageContent(message) {
+  const type = message.type;
+
+  if (type === 'text') {
+    return {
+      type: 'text',
+      text: message.text?.body || '',
+      media: null
+    };
+  }
+
+  if (type === 'document') {
+    return {
+      type: 'document',
+      text: message.document?.caption || 'Documento adjunto',
+      mediaId: message.document?.id,
+      filename: message.document?.filename || 'documento'
+    };
+  }
+
+  if (type === 'image') {
+    return {
+      type: 'image',
+      text: message.image?.caption || 'Imagen adjunta',
+      mediaId: message.image?.id,
+      filename: 'imagen'
+    };
+  }
+
+  if (type === 'audio') {
+    return {
+      type: 'audio',
+      text: 'Audio adjunto',
+      mediaId: message.audio?.id,
+      filename: 'audio'
+    };
+  }
+
+  if (type === 'video') {
+    return {
+      type: 'video',
+      text: message.video?.caption || 'Video adjunto',
+      mediaId: message.video?.id,
+      filename: 'video'
+    };
+  }
+
+  return {
+    type,
+    text: `Mensaje recibido tipo: ${type}`,
+    mediaId: null,
+    filename: ''
+  };
 }
 
 app.get('/health', (req, res) => {
@@ -165,12 +266,12 @@ app.post('/webhook/whatsapp', async (req, res) => {
     const value = change?.value;
     const message = value?.messages?.[0];
 
-    if (!message || message.type !== 'text') return;
+    if (!message) return;
 
     const from = normalizePhone(message.from);
-    const text = message.text?.body || '';
+    const content = extractMessageContent(message);
 
-    console.log('Mensaje recibido de:', from, 'Texto:', text);
+    console.log('Mensaje recibido de:', from, 'Tipo:', content.type, 'Texto:', content.text);
 
     const db = await readDb();
 
@@ -182,16 +283,35 @@ app.post('/webhook/whatsapp', async (req, res) => {
       createdAt: nowIso()
     };
 
-    convo.lastMessage = text;
+    let media = null;
+
+    if (content.mediaId) {
+      try {
+        media = await downloadWhatsAppMedia(
+          content.mediaId,
+          from,
+          content.type,
+          content.filename
+        );
+
+        console.log('Archivo descargado:', media.url);
+      } catch (err) {
+        console.error('Error descargando archivo:', err.response?.data || err.message);
+      }
+    }
+
+    convo.lastMessage = content.text;
     convo.updatedAt = nowIso();
 
     convo.messages.push({
       from: 'client',
-      text,
+      type: content.type,
+      text: content.text,
+      media,
       at: nowIso()
     });
 
-    const c = classify(text);
+    const c = classify(content.text);
     convo.tag = c.tag;
 
     if (c.wantsHuman) {
@@ -199,10 +319,17 @@ app.post('/webhook/whatsapp', async (req, res) => {
     }
 
     if (convo.status === 'BOT') {
-      const reply = nextBotReply(text, convo);
+      let reply;
+
+      if (content.type !== 'text') {
+        reply = 'Recibimos el archivo adjunto ✅ Un operador lo revisará junto con la consulta.';
+      } else {
+        reply = nextBotReply(content.text, convo);
+      }
 
       convo.messages.push({
         from: 'bot',
+        type: 'text',
         text: reply,
         at: nowIso()
       });
@@ -272,8 +399,10 @@ app.post('/api/conversations/:phone/send', requireDashboardAuth, async (req, res
   };
 
   convo.status = 'HUMAN';
+
   convo.messages.push({
     from: 'human',
+    type: 'text',
     text,
     at: nowIso()
   });
