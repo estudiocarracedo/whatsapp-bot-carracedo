@@ -50,14 +50,9 @@ function normalizePhone(phone = '') {
   return phone.replace(/\D/g, '');
 }
 
-// CORRECCIÓN ARGENTINA:
-// Meta a veces autoriza +54 11..., pero WhatsApp entrante llega como 54911...
-// Esta función prueba enviar en formato autorizado por Meta.
 function normalizePhoneForMeta(phone = '') {
   let clean = normalizePhone(phone);
 
-  // Si viene como Argentina móvil: 54911XXXXXXXX
-  // lo convertimos a: 5411XXXXXXXX
   if (clean.startsWith('54911')) {
     clean = '54' + clean.slice(3);
   }
@@ -80,61 +75,39 @@ function classify(text) {
 }
 
 function nextBotReply(text, convo) {
-  const lower = (text || '').toLowerCase();
-
-  if (/operador|persona|humano|asesor|llamar/.test(lower)) {
-    return 'Perfecto. Ya recibimos tu consulta ✅ Uno de nuestros operadores especializados continuará la atención a la brevedad.';
+  if (!convo.step) {
+    convo.step = 'ASK_NAME_COMPANY';
   }
 
-  if (!convo.name || !convo.company) {
-    return 'Hola 👋 Gracias por comunicarte con Estudio Carracedo Despachantes de Aduana. Para poder ayudarte mejor, ¿podrías indicarnos tu nombre y empresa?';
+  if (convo.step === 'ASK_NAME_COMPANY') {
+    convo.nameCompany = text;
+    convo.step = 'ASK_OPERATION';
+
+    return 'Perfecto, gracias. ¿Qué necesitás importar o exportar, desde qué país y en qué estado está la operación?';
   }
 
-  if (!convo.need) {
-    return 'Perfecto. ¿Qué necesitás importar o exportar, desde qué país y en qué estado está la operación?';
-  }
+  if (convo.step === 'ASK_OPERATION') {
+    convo.need = text;
+    convo.step = 'ASK_SUPPLIER';
 
-  if (!convo.hasSupplier) {
     return 'Gracias. ¿Ya tenés proveedor definido y factura/proforma, o todavía estás evaluando la operación?';
   }
 
-  if (!convo.requiresAnmat) {
-    return 'Una consulta más: ¿la mercadería requiere intervención de ANMAT o algún registro/certificado especial?';
+  if (convo.step === 'ASK_SUPPLIER') {
+    convo.hasSupplier = text;
+    convo.step = 'ASK_ANMAT';
+
+    return 'Entendido. ¿La mercadería requiere intervención de ANMAT, registro, certificado especial o algún organismo extraaduanero?';
   }
 
-  return 'Gracias, ya tomamos los datos principales ✅ Un operador especializado revisará la consulta y continuará la atención a la brevedad.';
-}
+  if (convo.step === 'ASK_ANMAT') {
+    convo.requiresAnmat = text;
+    convo.step = 'DONE';
 
-function updateExtractedFields(convo, text) {
-  const clean = (text || '').trim();
-
-  if (!convo.name && clean.length > 2) {
-    const nameMatch = clean.match(/(?:soy|me llamo|mi nombre es)\s+([^,\.\n]+)/i);
-    if (nameMatch) convo.name = nameMatch[1].trim();
+    return 'Perfecto. Ya recibimos tu consulta ✅ Un operador especializado de Estudio Carracedo revisará la información y continuará la atención a la brevedad.';
   }
 
-  if (!convo.company) {
-    const companyMatch = clean.match(/(?:empresa|firma|compa[nñ][ií]a)\s+([^,\.\n]+)/i);
-    if (companyMatch) convo.company = companyMatch[1].trim();
-  }
-
-  if ((!convo.name || !convo.company) && clean.includes('\n')) {
-    const lines = clean.split('\n').map(x => x.trim()).filter(Boolean);
-    if (!convo.name && lines[0]) convo.name = lines[0];
-    if (!convo.company && lines[1]) convo.company = lines[1];
-  }
-
-  if (!convo.need && /import|export|traer|comprar|aduana|despacho|mercader[ií]a|producto|ncm|anmat/i.test(clean)) {
-    convo.need = clean;
-  }
-
-  if (!convo.hasSupplier && /proveedor|proforma|factura|supplier/i.test(clean)) {
-    convo.hasSupplier = clean;
-  }
-
-  if (!convo.requiresAnmat && /anmat|registro|certificado|m[eé]dic|salud|implante|quir/i.test(clean)) {
-    convo.requiresAnmat = clean;
-  }
+  return 'Gracias. Ya tenemos registrada tu consulta ✅ Un operador especializado continuará la atención a la brevedad.';
 }
 
 async function sendWhatsAppText(to, text) {
@@ -204,19 +177,19 @@ app.post('/webhook/whatsapp', async (req, res) => {
     const convo = db.conversations[from] || {
       phone: from,
       status: 'BOT',
+      step: 'ASK_NAME_COMPANY',
       messages: [],
       createdAt: nowIso()
     };
 
     convo.lastMessage = text;
     convo.updatedAt = nowIso();
+
     convo.messages.push({
       from: 'client',
       text,
       at: nowIso()
     });
-
-    updateExtractedFields(convo, text);
 
     const c = classify(text);
     convo.tag = c.tag;
