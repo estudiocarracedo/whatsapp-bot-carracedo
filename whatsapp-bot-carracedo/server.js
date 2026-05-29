@@ -19,8 +19,8 @@ const VERIFY_TOKEN =
 
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
-
 const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || 'carracedo123';
+
 const DB_PATH = path.join(process.cwd(), 'data', 'db.json');
 const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
 
@@ -59,15 +59,15 @@ function normalizePhoneForMeta(phone = '') {
 
 function classify(text) {
   const t = (text || '').toLowerCase();
-  const anmat = /anmat|medical|m[eé]dic|implante|quir[uú]rg|salud|registro/.test(t);
-  const importExport = /import|export|aduana|despacho|ncm|sim|sira|licencia|proveedor|china|suiza|eeuu|usa|europa|brasil|uruguay|panam[aá]/.test(t);
-  const human = /operador|persona|humano|llamar|asesor|hablar con/.test(t);
 
-  let tag = 'Consulta simple';
-  if (anmat) tag = 'Cliente ANMAT';
-  else if (importExport) tag = 'Cliente potencial';
+  if (/anmat|registro|certificado|m[eé]dic|salud|implante|quir[uú]rg/.test(t)) return 'ANMAT';
+  if (/implante|pr[oó]tesis|ortopedia|quir[uú]rg/.test(t)) return 'IMPLANTES';
+  if (/cosm[eé]tica|cosmetico|crema|perfume/.test(t)) return 'COSMETICA';
+  if (/alimento|caf[eé]|bebida|comestible|senasa|inal/.test(t)) return 'ALIMENTOS';
+  if (/courier|puerta a puerta|fedex|dhl|ups/.test(t)) return 'COURIER';
+  if (/import|export|aduana|despacho|ncm|proveedor|factura|proforma/.test(t)) return 'COMEX';
 
-  return { tag, wantsHuman: human };
+  return 'SIN CLASIFICAR';
 }
 
 function nextBotReply(text, convo) {
@@ -94,10 +94,27 @@ function nextBotReply(text, convo) {
   if (convo.step === 'ASK_ANMAT') {
     convo.requiresAnmat = text;
     convo.step = 'DONE';
+    convo.status = 'HUMAN';
     return 'Perfecto. Ya recibimos tu consulta ✅ Un operador especializado de Estudio Carracedo revisará la información y continuará la atención a la brevedad.';
   }
 
   return 'Gracias. Ya tenemos registrada tu consulta ✅ Un operador especializado continuará la atención a la brevedad.';
+}
+
+function buildLeadSummary(convo) {
+  const attachments = (convo.messages || []).filter(m => m.media?.url).length;
+
+  return {
+    contacto: convo.nameCompany || convo.phone || 'Sin identificar',
+    empresa: convo.company || 'Pendiente',
+    etiqueta: convo.tag || 'SIN CLASIFICAR',
+    operacion: convo.need || 'Pendiente',
+    proveedor: convo.hasSupplier || 'Pendiente',
+    anmat: convo.requiresAnmat || 'Pendiente',
+    adjuntos: attachments,
+    estado: convo.status || 'BOT',
+    fecha: convo.updatedAt || convo.createdAt || nowIso()
+  };
 }
 
 async function sendWhatsAppText(to, text) {
@@ -107,7 +124,6 @@ async function sendWhatsAppText(to, text) {
   }
 
   const cleanTo = normalizePhoneForMeta(to);
-  console.log('Enviando WhatsApp a:', cleanTo);
 
   await axios.post(
     `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`,
@@ -115,10 +131,7 @@ async function sendWhatsAppText(to, text) {
       messaging_product: 'whatsapp',
       to: cleanTo,
       type: 'text',
-      text: {
-        preview_url: false,
-        body: text
-      }
+      text: { preview_url: false, body: text }
     },
     {
       headers: {
@@ -132,28 +145,20 @@ async function sendWhatsAppText(to, text) {
 function getExtensionFromMime(mime = '') {
   if (mime.includes('pdf')) return 'pdf';
   if (mime.includes('jpeg')) return 'jpg';
-  if (mime.includes('jpg')) return 'jpg';
   if (mime.includes('png')) return 'png';
   if (mime.includes('webp')) return 'webp';
   if (mime.includes('mp4')) return 'mp4';
   if (mime.includes('mpeg')) return 'mp3';
   if (mime.includes('ogg')) return 'ogg';
-  if (mime.includes('plain')) return 'txt';
   if (mime.includes('word')) return 'docx';
   if (mime.includes('excel') || mime.includes('spreadsheet')) return 'xlsx';
   return 'bin';
 }
 
 async function downloadWhatsAppMedia(mediaId, phone, type, originalFilename = '') {
-  if (!WHATSAPP_TOKEN) throw new Error('Falta WHATSAPP_TOKEN');
-
   const mediaInfoResponse = await axios.get(
     `https://graph.facebook.com/v20.0/${mediaId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${WHATSAPP_TOKEN}`
-      }
-    }
+    { headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}` } }
   );
 
   const mediaUrl = mediaInfoResponse.data.url;
@@ -164,15 +169,12 @@ async function downloadWhatsAppMedia(mediaId, phone, type, originalFilename = ''
 
   await fs.mkdir(UPLOAD_DIR, { recursive: true });
 
-  const safePhone = normalizePhone(phone);
-  const filename = `${Date.now()}-${safePhone}-${type}.${ext}`;
+  const filename = `${Date.now()}-${normalizePhone(phone)}-${type}.${ext}`;
   const filePath = path.join(UPLOAD_DIR, filename);
 
   const fileResponse = await axios.get(mediaUrl, {
     responseType: 'arraybuffer',
-    headers: {
-      Authorization: `Bearer ${WHATSAPP_TOKEN}`
-    }
+    headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}` }
   });
 
   await fs.writeFile(filePath, fileResponse.data);
@@ -190,11 +192,7 @@ function extractMessageContent(message) {
   const type = message.type;
 
   if (type === 'text') {
-    return {
-      type: 'text',
-      text: message.text?.body || '',
-      media: null
-    };
+    return { type: 'text', text: message.text?.body || '', mediaId: null };
   }
 
   if (type === 'document') {
@@ -241,9 +239,7 @@ function extractMessageContent(message) {
   };
 }
 
-app.get('/health', (req, res) => {
-  res.json({ ok: true });
-});
+app.get('/health', (req, res) => res.json({ ok: true }));
 
 app.get('/webhook/whatsapp', (req, res) => {
   const mode = req.query['hub.mode'];
@@ -270,9 +266,6 @@ app.post('/webhook/whatsapp', async (req, res) => {
 
     const from = normalizePhone(message.from);
     const content = extractMessageContent(message);
-
-    console.log('Mensaje recibido de:', from, 'Tipo:', content.type, 'Texto:', content.text);
-
     const db = await readDb();
 
     const convo = db.conversations[from] || {
@@ -293,8 +286,6 @@ app.post('/webhook/whatsapp', async (req, res) => {
           content.type,
           content.filename
         );
-
-        console.log('Archivo descargado:', media.url);
       } catch (err) {
         console.error('Error descargando archivo:', err.response?.data || err.message);
       }
@@ -311,11 +302,13 @@ app.post('/webhook/whatsapp', async (req, res) => {
       at: nowIso()
     });
 
-    const c = classify(content.text);
-    convo.tag = c.tag;
+    if (!convo.tag || convo.tag === 'SIN CLASIFICAR') {
+      convo.tag = classify(content.text);
+    }
 
-    if (c.wantsHuman) {
-      convo.status = 'HUMAN';
+    if (content.type !== 'text') {
+      convo.hasAttachments = true;
+      convo.tag = convo.tag === 'SIN CLASIFICAR' ? 'CON ADJUNTOS' : convo.tag;
     }
 
     if (convo.status === 'BOT') {
@@ -337,6 +330,8 @@ app.post('/webhook/whatsapp', async (req, res) => {
       await sendWhatsAppText(from, reply);
     }
 
+    convo.leadSummary = buildLeadSummary(convo);
+
     db.conversations[from] = convo;
     await writeDb(db);
 
@@ -347,21 +342,17 @@ app.post('/webhook/whatsapp', async (req, res) => {
 
 function requireDashboardAuth(req, res, next) {
   const pass = req.headers['x-dashboard-password'] || req.query.password;
-
   if (pass !== DASHBOARD_PASSWORD) {
     return res.status(401).json({ error: 'Password incorrecto' });
   }
-
   next();
 }
 
 app.get('/api/conversations', requireDashboardAuth, async (req, res) => {
   const db = await readDb();
-
   const list = Object.values(db.conversations).sort((a, b) =>
     (b.updatedAt || '').localeCompare(a.updatedAt || '')
   );
-
   res.json(list);
 });
 
@@ -370,15 +361,29 @@ app.post('/api/conversations/:phone/status', requireDashboardAuth, async (req, r
   const phone = normalizePhone(req.params.phone);
   const convo = db.conversations[phone];
 
-  if (!convo) {
-    return res.status(404).json({ error: 'No existe conversación' });
-  }
+  if (!convo) return res.status(404).json({ error: 'No existe conversación' });
 
-  convo.status = req.body.status === 'BOT' ? 'BOT' : 'HUMAN';
+  const allowed = ['BOT', 'HUMAN', 'CLOSED'];
+  convo.status = allowed.includes(req.body.status) ? req.body.status : 'HUMAN';
   convo.updatedAt = nowIso();
+  convo.leadSummary = buildLeadSummary(convo);
 
   await writeDb(db);
+  res.json(convo);
+});
 
+app.post('/api/conversations/:phone/tag', requireDashboardAuth, async (req, res) => {
+  const db = await readDb();
+  const phone = normalizePhone(req.params.phone);
+  const convo = db.conversations[phone];
+
+  if (!convo) return res.status(404).json({ error: 'No existe conversación' });
+
+  convo.tag = req.body.tag || 'SIN CLASIFICAR';
+  convo.updatedAt = nowIso();
+  convo.leadSummary = buildLeadSummary(convo);
+
+  await writeDb(db);
   res.json(convo);
 });
 
@@ -387,9 +392,7 @@ app.post('/api/conversations/:phone/send', requireDashboardAuth, async (req, res
   const phone = normalizePhone(req.params.phone);
   const text = (req.body.text || '').trim();
 
-  if (!text) {
-    return res.status(400).json({ error: 'Mensaje vacío' });
-  }
+  if (!text) return res.status(400).json({ error: 'Mensaje vacío' });
 
   const convo = db.conversations[phone] || {
     phone,
@@ -399,15 +402,10 @@ app.post('/api/conversations/:phone/send', requireDashboardAuth, async (req, res
   };
 
   convo.status = 'HUMAN';
-
-  convo.messages.push({
-    from: 'human',
-    type: 'text',
-    text,
-    at: nowIso()
-  });
-
+  convo.messages.push({ from: 'human', type: 'text', text, at: nowIso() });
   convo.updatedAt = nowIso();
+  convo.leadSummary = buildLeadSummary(convo);
+
   db.conversations[phone] = convo;
 
   await sendWhatsAppText(phone, text);
