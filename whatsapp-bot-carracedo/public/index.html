@@ -1,13 +1,427 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bot WhatsApp - Estudio Carracedo</title><style>
-body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#0f172a;color:#e5e7eb;margin:0}.wrap{display:grid;grid-template-columns:360px 1fr;height:100vh}.side{border-right:1px solid #334155;overflow:auto}.top{padding:16px;border-bottom:1px solid #334155;background:#111827}.title{font-weight:800;font-size:18px}.login{padding:12px;display:flex;gap:8px}.login input,.send input{flex:1;padding:10px;border-radius:10px;border:1px solid #475569;background:#020617;color:white}.btn{padding:10px 12px;border:0;border-radius:10px;background:#22c55e;color:#052e16;font-weight:700;cursor:pointer}.btn.gray{background:#64748b;color:white}.conv{padding:12px;border-bottom:1px solid #1e293b;cursor:pointer}.conv:hover,.conv.active{background:#1e293b}.badge{font-size:12px;padding:3px 8px;border-radius:999px;background:#334155;display:inline-block;margin-top:6px}.badge.bot{background:#14532d}.badge.human{background:#7c2d12}.main{display:flex;flex-direction:column}.chat{flex:1;overflow:auto;padding:18px}.msg{max-width:760px;margin:8px 0;padding:12px;border-radius:14px;background:#1e293b}.msg.client{background:#334155}.msg.bot{background:#064e3b}.msg.human{background:#7c2d12}.small{font-size:12px;color:#94a3b8}.actions{padding:12px;border-top:1px solid #334155;display:flex;gap:8px}.send{padding:12px;border-top:1px solid #334155;display:flex;gap:8px}.empty{padding:28px;color:#94a3b8}.search{width:calc(100% - 24px);margin:12px;padding:10px;border-radius:10px;border:1px solid #475569;background:#020617;color:white}
-</style></head><body><div class="wrap"><aside class="side"><div class="top"><div class="title">WhatsApp Bot</div><div class="small">Estudio Carracedo</div></div><div class="login"><input id="pass" placeholder="Password dashboard"><button class="btn" onclick="load()">Entrar</button></div><input class="search" id="q" placeholder="Buscar" oninput="renderList()"><div id="list"></div></aside><main class="main"><div id="header" class="top">Seleccioná una conversación</div><div id="chat" class="chat"><div class="empty">Todavía no hay chat seleccionado.</div></div><div class="actions"><button class="btn gray" onclick="setStatus('HUMAN')">Tomar control</button><button class="btn" onclick="setStatus('BOT')">Volver a bot</button></div><div class="send"><input id="text" placeholder="Escribir como operador humano"><button class="btn" onclick="sendHuman()">Enviar</button></div></main></div><script>
-let conversations=[], selected=null; const $=id=>document.getElementById(id); function auth(){return $('pass').value}
-async function api(url,opt={}){opt.headers={...(opt.headers||{}),'Content-Type':'application/json','x-dashboard-password':auth()}; const r=await fetch(url,opt); if(!r.ok) throw new Error(await r.text()); return r.json()}
-async function load(){conversations=await api('/api/conversations'); renderList(); if(selected) select(selected.phone)}
-function renderList(){const q=$('q').value.toLowerCase(); $('list').innerHTML=conversations.filter(c=>JSON.stringify(c).toLowerCase().includes(q)).map(c=>`<div class="conv ${selected?.phone===c.phone?'active':''}" onclick="select('${c.phone}')"><b>${c.name||c.phone}</b><div class="small">${c.company||'Sin empresa'} · ${c.tag||'Sin etiqueta'}</div><span class="badge ${c.status==='BOT'?'bot':'human'}">${c.status}</span></div>`).join('')||'<div class="empty">Sin conversaciones.</div>'}
-function select(phone){selected=conversations.find(c=>c.phone===phone); $('header').innerHTML=`<b>${selected.name||selected.phone}</b><div class="small">${selected.company||''} · ${selected.tag||''}</div>`; $('chat').innerHTML=(selected.messages||[]).map(m=>`<div class="msg ${m.from}"><div>${escapeHtml(m.text)}</div><div class="small">${m.from} · ${new Date(m.at).toLocaleString()}</div></div>`).join(''); renderList(); $('chat').scrollTop=$('chat').scrollHeight}
-function escapeHtml(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-async function setStatus(status){if(!selected)return; selected=await api(`/api/conversations/${selected.phone}/status`,{method:'POST',body:JSON.stringify({status})}); await load(); select(selected.phone)}
-async function sendHuman(){if(!selected)return; const text=$('text').value.trim(); if(!text)return; $('text').value=''; selected=await api(`/api/conversations/${selected.phone}/send`,{method:'POST',body:JSON.stringify({text})}); await load(); select(selected.phone)}
-setInterval(()=>{if(auth())load().catch(()=>{})},10000)
-</script></body></html>
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bot WhatsApp - Estudio Carracedo</title>
+
+<style>
+body{
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  background:#0f172a;
+  color:#e5e7eb;
+  margin:0;
+}
+
+.wrap{
+  display:grid;
+  grid-template-columns:360px 1fr;
+  height:100vh;
+}
+
+.side{
+  border-right:1px solid #334155;
+  overflow:auto;
+}
+
+.top{
+  padding:16px;
+  border-bottom:1px solid #334155;
+  background:#111827;
+}
+
+.title{
+  font-weight:800;
+  font-size:18px;
+}
+
+.login{
+  padding:12px;
+  display:flex;
+  gap:8px;
+}
+
+.login input,.send input{
+  flex:1;
+  padding:10px;
+  border-radius:10px;
+  border:1px solid #475569;
+  background:#020617;
+  color:white;
+}
+
+.btn{
+  padding:10px 12px;
+  border:0;
+  border-radius:10px;
+  background:#22c55e;
+  color:#052e16;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.btn.gray{
+  background:#64748b;
+  color:white;
+}
+
+.btn.human{
+  background:#f97316;
+  color:white;
+}
+
+.btn.bot{
+  background:#22c55e;
+  color:#052e16;
+}
+
+.btn.activeBot{
+  background:#16a34a;
+  color:white;
+  box-shadow:0 0 0 2px #86efac;
+}
+
+.btn.activeHuman{
+  background:#dc2626;
+  color:white;
+  box-shadow:0 0 0 2px #fca5a5;
+}
+
+.conv{
+  padding:12px;
+  border-bottom:1px solid #1e293b;
+  cursor:pointer;
+  border-left:5px solid transparent;
+}
+
+.conv:hover,.conv.active{
+  background:#1e293b;
+}
+
+.conv.status-bot{
+  border-left-color:#22c55e;
+}
+
+.conv.status-human{
+  border-left-color:#f97316;
+  background:#1f2937;
+}
+
+.badge{
+  font-size:12px;
+  padding:3px 8px;
+  border-radius:999px;
+  display:inline-block;
+  margin-top:6px;
+  font-weight:800;
+}
+
+.badge.bot{
+  background:#14532d;
+  color:#bbf7d0;
+}
+
+.badge.human{
+  background:#7c2d12;
+  color:#fed7aa;
+}
+
+.modeBanner{
+  padding:12px 16px;
+  font-weight:900;
+  border-bottom:1px solid #334155;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.modeBanner.bot{
+  background:#064e3b;
+  color:#d1fae5;
+}
+
+.modeBanner.human{
+  background:#7c2d12;
+  color:#ffedd5;
+}
+
+.main{
+  display:flex;
+  flex-direction:column;
+}
+
+.chat{
+  flex:1;
+  overflow:auto;
+  padding:18px;
+}
+
+.msg{
+  max-width:760px;
+  margin:8px 0;
+  padding:12px;
+  border-radius:14px;
+  background:#1e293b;
+}
+
+.msg.client{
+  background:#334155;
+}
+
+.msg.bot{
+  background:#064e3b;
+}
+
+.msg.human{
+  background:#7c2d12;
+}
+
+.small{
+  font-size:12px;
+  color:#94a3b8;
+}
+
+.actions{
+  padding:12px;
+  border-top:1px solid #334155;
+  display:flex;
+  gap:8px;
+  background:#020617;
+}
+
+.send{
+  padding:12px;
+  border-top:1px solid #334155;
+  display:flex;
+  gap:8px;
+  background:#020617;
+}
+
+.empty{
+  padding:28px;
+  color:#94a3b8;
+}
+
+.search{
+  width:calc(100% - 24px);
+  margin:12px;
+  padding:10px;
+  border-radius:10px;
+  border:1px solid #475569;
+  background:#020617;
+  color:white;
+}
+
+.statusText{
+  font-size:13px;
+  font-weight:700;
+  opacity:.9;
+}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+
+<aside class="side">
+  <div class="top">
+    <div class="title">WhatsApp Bot</div>
+    <div class="small">Estudio Carracedo</div>
+  </div>
+
+  <div class="login">
+    <input id="pass" placeholder="Password dashboard">
+    <button class="btn" onclick="load()">Entrar</button>
+  </div>
+
+  <input class="search" id="q" placeholder="Buscar" oninput="renderList()">
+  <div id="list"></div>
+</aside>
+
+<main class="main">
+  <div id="header" class="top">Seleccioná una conversación</div>
+  <div id="modeBanner" class="modeBanner bot" style="display:none;"></div>
+
+  <div id="chat" class="chat">
+    <div class="empty">Todavía no hay chat seleccionado.</div>
+  </div>
+
+  <div class="actions">
+    <button id="btnHuman" class="btn human" onclick="setStatus('HUMAN')">👤 Tomar control</button>
+    <button id="btnBot" class="btn bot" onclick="setStatus('BOT')">🤖 Volver a bot</button>
+  </div>
+
+  <div class="send">
+    <input id="text" placeholder="Escribir como operador humano">
+    <button class="btn" onclick="sendHuman()">Enviar</button>
+  </div>
+</main>
+
+</div>
+
+<script>
+let conversations = [];
+let selected = null;
+
+const $ = id => document.getElementById(id);
+
+function auth(){
+  return $('pass').value;
+}
+
+async function api(url,opt={}){
+  opt.headers = {
+    ...(opt.headers || {}),
+    'Content-Type':'application/json',
+    'x-dashboard-password':auth()
+  };
+
+  const r = await fetch(url,opt);
+
+  if(!r.ok){
+    throw new Error(await r.text());
+  }
+
+  return r.json();
+}
+
+async function load(){
+  conversations = await api('/api/conversations');
+  renderList();
+
+  if(selected){
+    const updated = conversations.find(c => c.phone === selected.phone);
+    if(updated){
+      selected = updated;
+      select(selected.phone);
+    }
+  }
+}
+
+function renderList(){
+  const q = $('q').value.toLowerCase();
+
+  $('list').innerHTML = conversations
+    .filter(c => JSON.stringify(c).toLowerCase().includes(q))
+    .map(c => {
+      const statusClass = c.status === 'BOT' ? 'status-bot' : 'status-human';
+      const badgeClass = c.status === 'BOT' ? 'bot' : 'human';
+      const label = c.status === 'BOT' ? '🤖 BOT ACTIVO' : '👤 HUMANO ACTIVO';
+
+      return `
+        <div class="conv ${statusClass} ${selected?.phone === c.phone ? 'active' : ''}" onclick="select('${c.phone}')">
+          <b>${c.name || c.nameCompany || c.phone}</b>
+          <div class="small">${c.company || c.tag || 'Sin empresa'} · ${c.tag || 'Sin etiqueta'}</div>
+          <span class="badge ${badgeClass}">${label}</span>
+        </div>
+      `;
+    }).join('') || '<div class="empty">Sin conversaciones.</div>';
+}
+
+function select(phone){
+  selected = conversations.find(c => c.phone === phone);
+
+  $('header').innerHTML = `
+    <b>${selected.name || selected.nameCompany || selected.phone}</b>
+    <div class="small">${selected.company || ''} · ${selected.tag || ''}</div>
+  `;
+
+  renderModeBanner();
+
+  $('chat').innerHTML = (selected.messages || []).map(m => `
+    <div class="msg ${m.from}">
+      <div>${escapeHtml(m.text)}</div>
+      <div class="small">${m.from} · ${new Date(m.at).toLocaleString()}</div>
+    </div>
+  `).join('');
+
+  renderList();
+  updateButtons();
+
+  $('chat').scrollTop = $('chat').scrollHeight;
+}
+
+function renderModeBanner(){
+  const banner = $('modeBanner');
+
+  if(!selected){
+    banner.style.display = 'none';
+    return;
+  }
+
+  banner.style.display = 'flex';
+
+  if(selected.status === 'BOT'){
+    banner.className = 'modeBanner bot';
+    banner.innerHTML = `
+      <span>🤖 Modo BOT activo</span>
+      <span class="statusText">El bot responde automáticamente.</span>
+    `;
+  } else {
+    banner.className = 'modeBanner human';
+    banner.innerHTML = `
+      <span>👤 Control humano activo</span>
+      <span class="statusText">El bot está pausado para esta conversación.</span>
+    `;
+  }
+}
+
+function updateButtons(){
+  if(!selected) return;
+
+  $('btnHuman').className = selected.status === 'HUMAN'
+    ? 'btn activeHuman'
+    : 'btn human';
+
+  $('btnBot').className = selected.status === 'BOT'
+    ? 'btn activeBot'
+    : 'btn bot';
+}
+
+function escapeHtml(s){
+  return (s || '').replace(/[&<>"]/g, c => ({
+    '&':'&amp;',
+    '<':'&lt;',
+    '>':'&gt;',
+    '"':'&quot;'
+  }[c]));
+}
+
+async function setStatus(status){
+  if(!selected) return;
+
+  selected = await api(`/api/conversations/${selected.phone}/status`,{
+    method:'POST',
+    body:JSON.stringify({status})
+  });
+
+  await load();
+  select(selected.phone);
+}
+
+async function sendHuman(){
+  if(!selected) return;
+
+  const text = $('text').value.trim();
+  if(!text) return;
+
+  $('text').value = '';
+
+  selected = await api(`/api/conversations/${selected.phone}/send`,{
+    method:'POST',
+    body:JSON.stringify({text})
+  });
+
+  await load();
+  select(selected.phone);
+}
+
+setInterval(() => {
+  if(auth()){
+    load().catch(() => {});
+  }
+},10000);
+</script>
+
+</body>
+</html>
