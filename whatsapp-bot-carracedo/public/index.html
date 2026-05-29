@@ -60,11 +60,6 @@ body{
   cursor:pointer;
 }
 
-.btn.gray{
-  background:#64748b;
-  color:white;
-}
-
 .btn.human{
   background:#f97316;
   color:white;
@@ -126,6 +121,18 @@ body{
   color:#fed7aa;
 }
 
+.attachBadge{
+  font-size:12px;
+  padding:3px 8px;
+  border-radius:999px;
+  background:#1e3a8a;
+  color:#bfdbfe;
+  display:inline-block;
+  margin-top:6px;
+  margin-left:4px;
+  font-weight:800;
+}
+
 .modeBanner{
   padding:12px 16px;
   font-weight:900;
@@ -174,6 +181,31 @@ body{
 
 .msg.human{
   background:#7c2d12;
+}
+
+.mediaBox{
+  margin-top:10px;
+  padding:10px;
+  border-radius:12px;
+  background:#020617;
+  border:1px solid #334155;
+}
+
+.mediaBox img{
+  max-width:360px;
+  max-height:360px;
+  border-radius:10px;
+  display:block;
+}
+
+.mediaLink{
+  color:#60a5fa;
+  text-decoration:none;
+  font-weight:800;
+}
+
+.mediaLink:hover{
+  text-decoration:underline;
 }
 
 .small{
@@ -298,6 +330,10 @@ async function load(){
   }
 }
 
+function countAttachments(c){
+  return (c.messages || []).filter(m => m.media && m.media.url).length;
+}
+
 function renderList(){
   const q = $('q').value.toLowerCase();
 
@@ -307,12 +343,14 @@ function renderList(){
       const statusClass = c.status === 'BOT' ? 'status-bot' : 'status-human';
       const badgeClass = c.status === 'BOT' ? 'bot' : 'human';
       const label = c.status === 'BOT' ? '🤖 BOT ACTIVO' : '👤 HUMANO ACTIVO';
+      const attachCount = countAttachments(c);
 
       return `
         <div class="conv ${statusClass} ${selected?.phone === c.phone ? 'active' : ''}" onclick="select('${c.phone}')">
-          <b>${c.name || c.nameCompany || c.phone}</b>
-          <div class="small">${c.company || c.tag || 'Sin empresa'} · ${c.tag || 'Sin etiqueta'}</div>
+          <b>${escapeHtml(c.name || c.nameCompany || c.phone)}</b>
+          <div class="small">${escapeHtml(c.company || c.tag || 'Sin empresa')} · ${escapeHtml(c.tag || 'Sin etiqueta')}</div>
           <span class="badge ${badgeClass}">${label}</span>
+          ${attachCount ? `<span class="attachBadge">📎 ${attachCount} archivo${attachCount > 1 ? 's' : ''}</span>` : ''}
         </div>
       `;
     }).join('') || '<div class="empty">Sin conversaciones.</div>';
@@ -322,23 +360,53 @@ function select(phone){
   selected = conversations.find(c => c.phone === phone);
 
   $('header').innerHTML = `
-    <b>${selected.name || selected.nameCompany || selected.phone}</b>
-    <div class="small">${selected.company || ''} · ${selected.tag || ''}</div>
+    <b>${escapeHtml(selected.name || selected.nameCompany || selected.phone)}</b>
+    <div class="small">${escapeHtml(selected.company || '')} · ${escapeHtml(selected.tag || '')}</div>
   `;
 
   renderModeBanner();
 
-  $('chat').innerHTML = (selected.messages || []).map(m => `
-    <div class="msg ${m.from}">
-      <div>${escapeHtml(m.text)}</div>
-      <div class="small">${m.from} · ${new Date(m.at).toLocaleString()}</div>
-    </div>
-  `).join('');
+  $('chat').innerHTML = (selected.messages || []).map(m => renderMessage(m)).join('');
 
   renderList();
   updateButtons();
 
   $('chat').scrollTop = $('chat').scrollHeight;
+}
+
+function renderMessage(m){
+  let mediaHtml = '';
+
+  if(m.media && m.media.url){
+    const fileName = escapeHtml(m.media.filename || m.media.savedFilename || 'archivo adjunto');
+    const fileUrl = m.media.url;
+
+    if(m.type === 'image'){
+      mediaHtml = `
+        <div class="mediaBox">
+          <a href="${fileUrl}" target="_blank">
+            <img src="${fileUrl}" alt="${fileName}">
+          </a>
+          <div class="small" style="margin-top:6px">📎 ${fileName}</div>
+        </div>
+      `;
+    } else {
+      mediaHtml = `
+        <div class="mediaBox">
+          <a class="mediaLink" href="${fileUrl}" target="_blank">📎 Ver archivo adjunto</a>
+          <div class="small" style="margin-top:6px">${fileName}</div>
+        </div>
+      `;
+    }
+  }
+
+  return `
+    <div class="msg ${escapeHtml(m.from || '')}">
+      <div>${escapeHtml(m.text || '')}</div>
+      ${mediaHtml}
+      <div class="small">${escapeHtml(m.from || '')} · ${m.at ? new Date(m.at).toLocaleString() : ''}</div>
+    </div>
+  `;
 }
 
 function renderModeBanner(){
@@ -379,7 +447,7 @@ function updateButtons(){
 }
 
 function escapeHtml(s){
-  return (s || '').replace(/[&<>"]/g, c => ({
+  return String(s || '').replace(/[&<>"]/g, c => ({
     '&':'&amp;',
     '<':'&lt;',
     '>':'&gt;',
