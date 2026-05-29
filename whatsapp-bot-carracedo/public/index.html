@@ -6,249 +6,62 @@
 <title>Bot WhatsApp - Estudio Carracedo</title>
 
 <style>
-body{
-  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-  background:#0f172a;
-  color:#e5e7eb;
-  margin:0;
-}
-
-.wrap{
-  display:grid;
-  grid-template-columns:360px 1fr;
-  height:100vh;
-}
-
-.side{
-  border-right:1px solid #334155;
-  overflow:auto;
-}
-
-.top{
-  padding:16px;
-  border-bottom:1px solid #334155;
-  background:#111827;
-}
-
-.title{
-  font-weight:800;
-  font-size:18px;
-}
-
-.login{
-  padding:12px;
-  display:flex;
-  gap:8px;
-}
-
-.login input,.send input{
-  flex:1;
-  padding:10px;
-  border-radius:10px;
-  border:1px solid #475569;
-  background:#020617;
-  color:white;
-}
-
-.btn{
-  padding:10px 12px;
-  border:0;
-  border-radius:10px;
-  background:#22c55e;
-  color:#052e16;
-  font-weight:700;
-  cursor:pointer;
-}
-
-.btn.human{
-  background:#f97316;
-  color:white;
-}
-
-.btn.bot{
-  background:#22c55e;
-  color:#052e16;
-}
-
-.btn.activeBot{
-  background:#16a34a;
-  color:white;
-  box-shadow:0 0 0 2px #86efac;
-}
-
-.btn.activeHuman{
-  background:#dc2626;
-  color:white;
-  box-shadow:0 0 0 2px #fca5a5;
-}
-
-.conv{
-  padding:12px;
-  border-bottom:1px solid #1e293b;
-  cursor:pointer;
-  border-left:5px solid transparent;
-}
-
-.conv:hover,.conv.active{
-  background:#1e293b;
-}
-
-.conv.status-bot{
-  border-left-color:#22c55e;
-}
-
-.conv.status-human{
-  border-left-color:#f97316;
-  background:#1f2937;
-}
-
-.badge{
-  font-size:12px;
-  padding:3px 8px;
-  border-radius:999px;
-  display:inline-block;
-  margin-top:6px;
-  font-weight:800;
-}
-
-.badge.bot{
-  background:#14532d;
-  color:#bbf7d0;
-}
-
-.badge.human{
-  background:#7c2d12;
-  color:#fed7aa;
-}
-
-.attachBadge{
-  font-size:12px;
-  padding:3px 8px;
-  border-radius:999px;
-  background:#1e3a8a;
-  color:#bfdbfe;
-  display:inline-block;
-  margin-top:6px;
-  margin-left:4px;
-  font-weight:800;
-}
-
-.modeBanner{
-  padding:12px 16px;
-  font-weight:900;
-  border-bottom:1px solid #334155;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-
-.modeBanner.bot{
-  background:#064e3b;
-  color:#d1fae5;
-}
-
-.modeBanner.human{
-  background:#7c2d12;
-  color:#ffedd5;
-}
-
-.main{
-  display:flex;
-  flex-direction:column;
-}
-
-.chat{
-  flex:1;
-  overflow:auto;
-  padding:18px;
-}
-
-.msg{
-  max-width:760px;
-  margin:8px 0;
-  padding:12px;
-  border-radius:14px;
-  background:#1e293b;
-}
-
-.msg.client{
-  background:#334155;
-}
-
-.msg.bot{
-  background:#064e3b;
-}
-
-.msg.human{
-  background:#7c2d12;
-}
-
-.mediaBox{
-  margin-top:10px;
-  padding:10px;
-  border-radius:12px;
-  background:#020617;
-  border:1px solid #334155;
-}
-
-.mediaBox img{
-  max-width:360px;
-  max-height:360px;
-  border-radius:10px;
-  display:block;
-}
-
-.mediaLink{
-  color:#60a5fa;
-  text-decoration:none;
-  font-weight:800;
-}
-
-.mediaLink:hover{
-  text-decoration:underline;
-}
-
-.small{
-  font-size:12px;
-  color:#94a3b8;
-}
-
-.actions{
-  padding:12px;
-  border-top:1px solid #334155;
-  display:flex;
-  gap:8px;
-  background:#020617;
-}
-
-.send{
-  padding:12px;
-  border-top:1px solid #334155;
-  display:flex;
-  gap:8px;
-  background:#020617;
-}
-
-.empty{
-  padding:28px;
-  color:#94a3b8;
-}
-
-.search{
-  width:calc(100% - 24px);
-  margin:12px;
-  padding:10px;
-  border-radius:10px;
-  border:1px solid #475569;
-  background:#020617;
-  color:white;
-}
-
-.statusText{
-  font-size:13px;
-  font-weight:700;
-  opacity:.9;
-}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#0f172a;color:#e5e7eb;margin:0}
+.wrap{display:grid;grid-template-columns:390px 1fr;height:100vh}
+.side{border-right:1px solid #334155;overflow:auto}
+.top{padding:16px;border-bottom:1px solid #334155;background:#111827}
+.title{font-weight:900;font-size:18px}
+.login{padding:12px;display:flex;gap:8px}
+.login input,.send input{flex:1;padding:10px;border-radius:10px;border:1px solid #475569;background:#020617;color:white}
+.btn{padding:10px 12px;border:0;border-radius:10px;background:#22c55e;color:#052e16;font-weight:800;cursor:pointer}
+.btn.human{background:#f97316;color:white}
+.btn.bot{background:#22c55e;color:#052e16}
+.btn.closed{background:#334155;color:white}
+.btn.activeBot{background:#16a34a;color:white;box-shadow:0 0 0 2px #86efac}
+.btn.activeHuman{background:#dc2626;color:white;box-shadow:0 0 0 2px #fca5a5}
+.btn.activeClosed{background:#475569;color:white;box-shadow:0 0 0 2px #94a3b8}
+.search{width:calc(100% - 24px);margin:12px;padding:10px;border-radius:10px;border:1px solid #475569;background:#020617;color:white}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px}
+.metric{background:#111827;border:1px solid #334155;border-radius:12px;padding:10px}
+.metric b{font-size:20px;display:block}
+.metric span{font-size:12px;color:#94a3b8}
+.conv{padding:12px;border-bottom:1px solid #1e293b;cursor:pointer;border-left:5px solid transparent}
+.conv:hover,.conv.active{background:#1e293b}
+.conv.status-bot{border-left-color:#22c55e}
+.conv.status-human{border-left-color:#f97316;background:#1f2937}
+.conv.status-closed{border-left-color:#64748b;opacity:.75}
+.badge,.attachBadge,.tagBadge{font-size:12px;padding:3px 8px;border-radius:999px;display:inline-block;margin-top:6px;margin-right:4px;font-weight:800}
+.badge.bot{background:#14532d;color:#bbf7d0}
+.badge.human{background:#7c2d12;color:#fed7aa}
+.badge.closed{background:#334155;color:#cbd5e1}
+.attachBadge{background:#1e3a8a;color:#bfdbfe}
+.tagBadge{background:#581c87;color:#e9d5ff}
+.modeBanner{padding:12px 16px;font-weight:900;border-bottom:1px solid #334155;display:flex;justify-content:space-between;align-items:center}
+.modeBanner.bot{background:#064e3b;color:#d1fae5}
+.modeBanner.human{background:#7c2d12;color:#ffedd5}
+.modeBanner.closed{background:#334155;color:#e2e8f0}
+.main{display:flex;flex-direction:column}
+.chat{flex:1;overflow:auto;padding:18px}
+.summary{background:#020617;border:1px solid #334155;border-radius:14px;padding:14px;margin-bottom:14px}
+.summary h3{margin:0 0 10px 0}
+.summaryGrid{display:grid;grid-template-columns:160px 1fr;gap:6px;font-size:14px}
+.summaryGrid div:nth-child(odd){color:#94a3b8}
+.quickTags{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.tagBtn{border:1px solid #475569;background:#111827;color:#e5e7eb;border-radius:999px;padding:7px 10px;font-weight:700;cursor:pointer}
+.tagBtn:hover{background:#1e293b}
+.msg{max-width:760px;margin:8px 0;padding:12px;border-radius:14px;background:#1e293b}
+.msg.client{background:#334155}
+.msg.bot{background:#064e3b}
+.msg.human{background:#7c2d12}
+.mediaBox{margin-top:10px;padding:10px;border-radius:12px;background:#020617;border:1px solid #334155}
+.mediaBox img{max-width:360px;max-height:360px;border-radius:10px;display:block}
+.mediaLink{color:#60a5fa;text-decoration:none;font-weight:800}
+.mediaLink:hover{text-decoration:underline}
+.small{font-size:12px;color:#94a3b8}
+.actions{padding:12px;border-top:1px solid #334155;display:flex;gap:8px;background:#020617;flex-wrap:wrap}
+.send{padding:12px;border-top:1px solid #334155;display:flex;gap:8px;background:#020617}
+.empty{padding:28px;color:#94a3b8}
+.statusText{font-size:13px;font-weight:700;opacity:.9}
 </style>
 </head>
 
@@ -266,7 +79,9 @@ body{
     <button class="btn" onclick="load()">Entrar</button>
   </div>
 
-  <input class="search" id="q" placeholder="Buscar" oninput="renderList()">
+  <div id="metrics" class="metrics"></div>
+
+  <input class="search" id="q" placeholder="Buscar cliente, empresa, etiqueta..." oninput="renderList()">
   <div id="list"></div>
 </aside>
 
@@ -281,6 +96,7 @@ body{
   <div class="actions">
     <button id="btnHuman" class="btn human" onclick="setStatus('HUMAN')">👤 Tomar control</button>
     <button id="btnBot" class="btn bot" onclick="setStatus('BOT')">🤖 Volver a bot</button>
+    <button id="btnClosed" class="btn closed" onclick="setStatus('CLOSED')">✅ Marcar atendido</button>
   </div>
 
   <div class="send">
@@ -297,9 +113,7 @@ let selected = null;
 
 const $ = id => document.getElementById(id);
 
-function auth(){
-  return $('pass').value;
-}
+function auth(){ return $('pass').value; }
 
 async function api(url,opt={}){
   opt.headers = {
@@ -307,18 +121,14 @@ async function api(url,opt={}){
     'Content-Type':'application/json',
     'x-dashboard-password':auth()
   };
-
   const r = await fetch(url,opt);
-
-  if(!r.ok){
-    throw new Error(await r.text());
-  }
-
+  if(!r.ok) throw new Error(await r.text());
   return r.json();
 }
 
 async function load(){
   conversations = await api('/api/conversations');
+  renderMetrics();
   renderList();
 
   if(selected){
@@ -334,22 +144,47 @@ function countAttachments(c){
   return (c.messages || []).filter(m => m.media && m.media.url).length;
 }
 
+function renderMetrics(){
+  const active = conversations.filter(c => c.status !== 'CLOSED').length;
+  const bot = conversations.filter(c => c.status === 'BOT').length;
+  const human = conversations.filter(c => c.status === 'HUMAN').length;
+  const closed = conversations.filter(c => c.status === 'CLOSED').length;
+  const withFiles = conversations.filter(c => countAttachments(c) > 0).length;
+
+  $('metrics').innerHTML = `
+    <div class="metric"><b>${active}</b><span>Activas</span></div>
+    <div class="metric"><b>${human}</b><span>Para operador</span></div>
+    <div class="metric"><b>${bot}</b><span>Modo BOT</span></div>
+    <div class="metric"><b>${closed}</b><span>Atendidas</span></div>
+    <div class="metric"><b>${withFiles}</b><span>Con adjuntos</span></div>
+    <div class="metric"><b>${conversations.length}</b><span>Total</span></div>
+  `;
+}
+
+function statusLabel(status){
+  if(status === 'BOT') return '🤖 BOT ACTIVO';
+  if(status === 'HUMAN') return '👤 HUMANO ACTIVO';
+  if(status === 'CLOSED') return '✅ ATENDIDO';
+  return status || 'SIN ESTADO';
+}
+
 function renderList(){
   const q = $('q').value.toLowerCase();
 
   $('list').innerHTML = conversations
     .filter(c => JSON.stringify(c).toLowerCase().includes(q))
     .map(c => {
-      const statusClass = c.status === 'BOT' ? 'status-bot' : 'status-human';
-      const badgeClass = c.status === 'BOT' ? 'bot' : 'human';
-      const label = c.status === 'BOT' ? '🤖 BOT ACTIVO' : '👤 HUMANO ACTIVO';
+      const status = c.status || 'BOT';
+      const statusClass = status === 'BOT' ? 'status-bot' : status === 'HUMAN' ? 'status-human' : 'status-closed';
+      const badgeClass = status === 'BOT' ? 'bot' : status === 'HUMAN' ? 'human' : 'closed';
       const attachCount = countAttachments(c);
 
       return `
         <div class="conv ${statusClass} ${selected?.phone === c.phone ? 'active' : ''}" onclick="select('${c.phone}')">
           <b>${escapeHtml(c.name || c.nameCompany || c.phone)}</b>
-          <div class="small">${escapeHtml(c.company || c.tag || 'Sin empresa')} · ${escapeHtml(c.tag || 'Sin etiqueta')}</div>
-          <span class="badge ${badgeClass}">${label}</span>
+          <div class="small">${escapeHtml(c.company || 'Sin empresa')} · ${escapeHtml(c.lastMessage || '')}</div>
+          <span class="badge ${badgeClass}">${statusLabel(status)}</span>
+          <span class="tagBadge">${escapeHtml(c.tag || 'SIN CLASIFICAR')}</span>
           ${attachCount ? `<span class="attachBadge">📎 ${attachCount} archivo${attachCount > 1 ? 's' : ''}</span>` : ''}
         </div>
       `;
@@ -366,12 +201,43 @@ function select(phone){
 
   renderModeBanner();
 
-  $('chat').innerHTML = (selected.messages || []).map(m => renderMessage(m)).join('');
+  $('chat').innerHTML = renderSummary(selected) + (selected.messages || []).map(m => renderMessage(m)).join('');
 
   renderList();
   updateButtons();
 
   $('chat').scrollTop = $('chat').scrollHeight;
+}
+
+function renderSummary(c){
+  const s = c.leadSummary || {};
+  const files = countAttachments(c);
+
+  return `
+    <div class="summary">
+      <h3>📋 Ficha del lead</h3>
+      <div class="summaryGrid">
+        <div>Contacto</div><div>${escapeHtml(s.contacto || c.nameCompany || c.phone)}</div>
+        <div>Empresa</div><div>${escapeHtml(s.empresa || c.company || 'Pendiente')}</div>
+        <div>Etiqueta</div><div>${escapeHtml(c.tag || s.etiqueta || 'SIN CLASIFICAR')}</div>
+        <div>Operación</div><div>${escapeHtml(s.operacion || c.need || 'Pendiente')}</div>
+        <div>Proveedor / factura</div><div>${escapeHtml(s.proveedor || c.hasSupplier || 'Pendiente')}</div>
+        <div>ANMAT / extraaduanero</div><div>${escapeHtml(s.anmat || c.requiresAnmat || 'Pendiente')}</div>
+        <div>Adjuntos</div><div>${files}</div>
+        <div>Estado</div><div>${escapeHtml(statusLabel(c.status))}</div>
+      </div>
+
+      <div class="quickTags">
+        <button class="tagBtn" onclick="setTag('ANMAT')">ANMAT</button>
+        <button class="tagBtn" onclick="setTag('IMPLANTES')">Implantes</button>
+        <button class="tagBtn" onclick="setTag('COSMETICA')">Cosmética</button>
+        <button class="tagBtn" onclick="setTag('ALIMENTOS')">Alimentos</button>
+        <button class="tagBtn" onclick="setTag('COURIER')">Courier</button>
+        <button class="tagBtn" onclick="setTag('COMEX')">Comex</button>
+        <button class="tagBtn" onclick="setTag('SIN CLASIFICAR')">Sin clasificar</button>
+      </div>
+    </div>
+  `;
 }
 
 function renderMessage(m){
@@ -411,39 +277,28 @@ function renderMessage(m){
 
 function renderModeBanner(){
   const banner = $('modeBanner');
-
-  if(!selected){
-    banner.style.display = 'none';
-    return;
-  }
+  if(!selected){ banner.style.display = 'none'; return; }
 
   banner.style.display = 'flex';
 
   if(selected.status === 'BOT'){
     banner.className = 'modeBanner bot';
-    banner.innerHTML = `
-      <span>🤖 Modo BOT activo</span>
-      <span class="statusText">El bot responde automáticamente.</span>
-    `;
-  } else {
+    banner.innerHTML = `<span>🤖 Modo BOT activo</span><span class="statusText">El bot responde automáticamente.</span>`;
+  } else if(selected.status === 'HUMAN'){
     banner.className = 'modeBanner human';
-    banner.innerHTML = `
-      <span>👤 Control humano activo</span>
-      <span class="statusText">El bot está pausado para esta conversación.</span>
-    `;
+    banner.innerHTML = `<span>👤 Control humano activo</span><span class="statusText">El bot está pausado para esta conversación.</span>`;
+  } else {
+    banner.className = 'modeBanner closed';
+    banner.innerHTML = `<span>✅ Conversación atendida</span><span class="statusText">Caso cerrado en la cola.</span>`;
   }
 }
 
 function updateButtons(){
   if(!selected) return;
 
-  $('btnHuman').className = selected.status === 'HUMAN'
-    ? 'btn activeHuman'
-    : 'btn human';
-
-  $('btnBot').className = selected.status === 'BOT'
-    ? 'btn activeBot'
-    : 'btn bot';
+  $('btnHuman').className = selected.status === 'HUMAN' ? 'btn activeHuman' : 'btn human';
+  $('btnBot').className = selected.status === 'BOT' ? 'btn activeBot' : 'btn bot';
+  $('btnClosed').className = selected.status === 'CLOSED' ? 'btn activeClosed' : 'btn closed';
 }
 
 function escapeHtml(s){
@@ -461,6 +316,18 @@ async function setStatus(status){
   selected = await api(`/api/conversations/${selected.phone}/status`,{
     method:'POST',
     body:JSON.stringify({status})
+  });
+
+  await load();
+  select(selected.phone);
+}
+
+async function setTag(tag){
+  if(!selected) return;
+
+  selected = await api(`/api/conversations/${selected.phone}/tag`,{
+    method:'POST',
+    body:JSON.stringify({tag})
   });
 
   await load();
