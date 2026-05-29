@@ -50,6 +50,21 @@ function normalizePhone(phone = '') {
   return phone.replace(/\D/g, '');
 }
 
+// CORRECCIÓN ARGENTINA:
+// Meta a veces autoriza +54 11..., pero WhatsApp entrante llega como 54911...
+// Esta función prueba enviar en formato autorizado por Meta.
+function normalizePhoneForMeta(phone = '') {
+  let clean = normalizePhone(phone);
+
+  // Si viene como Argentina móvil: 54911XXXXXXXX
+  // lo convertimos a: 5411XXXXXXXX
+  if (clean.startsWith('54911')) {
+    clean = '54' + clean.slice(3);
+  }
+
+  return clean;
+}
+
 function classify(text) {
   const t = (text || '').toLowerCase();
 
@@ -128,7 +143,7 @@ async function sendWhatsAppText(to, text) {
     return;
   }
 
-  const cleanTo = normalizePhone(to);
+  const cleanTo = normalizePhoneForMeta(to);
 
   console.log('Enviando WhatsApp a:', cleanTo);
 
